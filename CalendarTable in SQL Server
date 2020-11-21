@@ -1,0 +1,35 @@
+Drop Table if exists Calendar;
+ 
+Create Table Calendar 
+(
+    Date Date Primary Key, DayNo TinyInt, MonthNo TinyInt, YearNo SmallInt
+    , WeekNo TinyInt, ISOWeekNo TinyInt,WeekDayNo TinyInt
+    , DayName Varchar(10), MonthName Varchar(10), QuaterNo TinyInt
+    , DayOfYearNo SmallInt, IsWeekEnd TinyInt
+    , IsHoliday TinyInt, HolidayDescription nVarchar(500)
+)
+ 
+;with cteSeed  as ( Select 0 Seed union all Select Seed +1 From cteSeed where Seed <=100000)
+,     cteDateDimenion as ( Select dateadd(Day,Seed,cast('1990-01-01' as date) ) Date from cteSeed)
+,     cteCalendar as (
+        Select 
+                 Date,Day(Date)DayNo,Month(Date) MonthNo, Year(Date) YearNo 
+            ,DAtePArt(Week,Date) WeeKNo, DATEPART(ISO_WEEK,Date) ISOWeekNo,DATEPART(WEEKDAY,Date) WeekDayNo
+            ,DAteName(WEEKDAY,Date) DayName, DAteName(Month,Date) MonthName
+            ,DATEPART(Quarter,date) QuaterNo, DATEPART(DAYOFYEAR, date) DayOfYearNo
+            ,Case when DAteName(WEEKDAY,Date) in ('Saturday','Sunday') Then 1 Else 0 End 'IsWeekEnd'
+            ,Case When Day(Date)=1 and Month(Date)=1 Then '|New Year Day|' 
+                    When Day(Date)=25 and Month(Date)=12 Then '|Christmas Day|' 
+                    Else '' End  
+            + Case when DAteName(WEEKDAY,Date) in ('Saturday','Sunday') Then '|' 
+            +  DAteName(WEEKDAY,Date) + '|' Else '' End as HoliDayDescription
+        From cteDateDimenion )
+Insert into Calendar (Date,DayNo,MonthNo,YearNo,WeekNo,ISOWeekNo,WeekDAyNo
+,DayName,MonthName,QuaterNo,DayOfYearNo,IsWeekEnd,IsHoliday,HolidayDescription)
+Select Date,DayNo,MonthNo,YearNo,WeekNo,ISOWeekNo,WeekDAyNo
+,DayName,MonthName,QuaterNo,DayOfYearNo,IsWeekEnd,NULL,HolidayDescription From cteCalendar
+OPTION (MAXRECURSION 0);
+ 
+Update Calendar Set IsHoliday = Case when Len(HoliDayDescription) > 0 Then 1 Else 0 End 
+ 
+Select * From Calendar
